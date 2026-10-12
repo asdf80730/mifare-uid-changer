@@ -366,6 +366,15 @@ public class MainActivity extends AppCompatActivity {
         saveList();
     }
 
+    private void sortUidList(boolean byName) {
+        Comparator<UidItem> comparator = Comparator.comparing(
+                item -> byName ? item.getName() : item.getId(),
+                String.CASE_INSENSITIVE_ORDER);
+        settings.getList().sort(comparator);
+        saveList();
+        uidAdapter.notifyDataSetChanged();
+    }
+
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
@@ -388,6 +397,10 @@ public class MainActivity extends AppCompatActivity {
             restoreFromGDrive();
         } else if (id == R.id.action_restore_local) {
             restoreFromLocal();
+        } else if (id == R.id.action_sort_name) {
+            sortUidList(true);
+        } else if (id == R.id.action_sort_uid) {
+            sortUidList(false);
         }
         return super.onOptionsItemSelected(item);
     }
