@@ -556,6 +556,7 @@ public class MainActivity extends AppCompatActivity {
         if (nfcAdapter == null) {
             showToast("No NFC supported on this phone");
             finish();
+            return;
         }
 
         if (!nfcAdapter.isEnabled()) {
