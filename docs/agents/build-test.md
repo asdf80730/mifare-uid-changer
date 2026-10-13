@@ -55,3 +55,17 @@ Robolectric passes while the real UI is broken — trust logcat + window dumps. 
 per dump, re-dump after each tap (an ANR dialog carries `Wait` and `Close app` in the
 same tree; grabbing both kills the app). `adb logcat | grep AccessibilityNodeInfoDumper`
 surfaces zero-bounds widgets the dumpfile omits.
+
+## Shipping a feature
+
+Done means every line green:
+
+1. `testDebugUnitTest` suite passes (the hook enforces it on ordinary commits).
+2. `scripts/pr-cut.sh` rebuilds `pr/upstream` from `add-sorting` — squashes the product
+   commits and self-asserts the product-path diff is clean.
+3. `scripts/smoke-apk.sh` regenerates the emulator-testable APK (tree must be clean).
+4. Anything the user can now do that has no `GLOSSARY.md` term gets one.
+
+Gotcha: a `hooksPath`-relative hook file is skipped by git whenever the current
+checkout doesn't contain it — base-checkout states and cherry-pick chains included.
+Flow that commits away from the tip runs the suite itself (pr-cut does).

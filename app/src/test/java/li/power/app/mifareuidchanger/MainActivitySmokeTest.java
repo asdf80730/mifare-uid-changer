@@ -56,6 +56,19 @@ public class MainActivitySmokeTest {
         f.set(act, q);
     }
 
+    /** Opens the prefilled dialog the way a user does: long-press -> EDIT button. */
+    private AlertDialog openEditViaLongPress(MainActivity act, UidItem item) throws Exception {
+        Method del = MainActivity.class.getDeclaredMethod("showDeleteTagUidDialog",
+                UidItem.class, int.class);
+        del.setAccessible(true);
+        del.invoke(act, item, 0);
+        Shadows.shadowOf(android.os.Looper.getMainLooper()).idle();
+        ((AlertDialog) ShadowDialog.getLatestDialog())
+                .getButton(DialogInterface.BUTTON_NEUTRAL).performClick();
+        Shadows.shadowOf(android.os.Looper.getMainLooper()).idle();
+        return (AlertDialog) ShadowDialog.getLatestDialog();
+    }
+
     private MainActivity newActivity() {
         return Robolectric.buildActivity(MainActivity.class).create().start().get();
     }
@@ -228,17 +241,7 @@ public class MainActivitySmokeTest {
         save(act, "11223344", "Old");
         Object st = getField(act, "settings");
         java.util.List<?> items = (java.util.List<?>) st.getClass().getMethod("getList").invoke(st);
-        Object item = items.get(0);
-        Field et = MainActivity.class.getDeclaredField("editTarget");
-        et.setAccessible(true);
-        et.set(act, item);
-        Method show = MainActivity.class.getDeclaredMethod("showAddTagDialog");
-        show.setAccessible(true);
-        show.invoke(act);
-        et.set(act, null); // same one-shot token semantics as the EDIT button path
-        Shadows.shadowOf(android.os.Looper.getMainLooper()).idle();
-
-        AlertDialog dialog = (AlertDialog) ShadowDialog.getLatestDialog();
+        AlertDialog dialog = openEditViaLongPress(act, (UidItem) items.get(0));
         EditText uidField = dialog.findViewById(R.id.edit_text_default_uid);
         EditText nameField = dialog.findViewById(R.id.edit_text_default_uid_name);
         assertEquals("edit dialog prefills uid", "11223344", uidField.getText().toString());
@@ -258,17 +261,7 @@ public class MainActivitySmokeTest {
         save(act, "11223344", "Origin");
         Object st = getField(act, "settings");
         java.util.List<?> items = (java.util.List<?>) st.getClass().getMethod("getList").invoke(st);
-        Object item = items.get(0);
-        Field et = MainActivity.class.getDeclaredField("editTarget");
-        et.setAccessible(true);
-        et.set(act, item);
-        Method show = MainActivity.class.getDeclaredMethod("showAddTagDialog");
-        show.setAccessible(true);
-        show.invoke(act);
-        et.set(act, null);
-        Shadows.shadowOf(android.os.Looper.getMainLooper()).idle();
-
-        AlertDialog dialog = (AlertDialog) ShadowDialog.getLatestDialog();
+        AlertDialog dialog = openEditViaLongPress(act, (UidItem) items.get(0));
         ((EditText) dialog.findViewById(R.id.edit_text_default_uid)).setText("DEADBEEF");
         dialog.getButton(DialogInterface.BUTTON_POSITIVE).performClick();
 
