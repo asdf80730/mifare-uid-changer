@@ -1,0 +1,177 @@
+package li.power.app.mifareuidchanger;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
+import android.app.AlertDialog;
+import android.content.DialogInterface;
+import android.widget.Button;
+import android.widget.EditText;
+
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.robolectric.Robolectric;
+import org.robolectric.RobolectricTestRunner;
+import org.robolectric.android.controller.ActivityController;
+import org.robolectric.annotation.Config;
+import org.robolectric.shadows.ShadowDialog;
+import org.robolectric.Shadows;
+
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+
+@RunWith(RobolectricTestRunner.class)
+@Config(sdk = 34)
+public class MainActivitySmokeTest {
+
+    private Object getField(Object target, String name) throws Exception {
+        Field f = MainActivity.class.getDeclaredField(name);
+        f.setAccessible(true);
+        return f.get(target);
+    }
+
+    private int displayedCount(MainActivity act) throws Exception {
+        java.util.List<?> dl = (java.util.List<?>) getField(act, "displayList");
+        return dl.size();
+    }
+
+    private void save(MainActivity act, String uid, String name) throws Exception {
+        Method m = MainActivity.class.getDeclaredMethod("saveTagUid", String.class, String.class);
+        m.setAccessible(true);
+        m.invoke(act, uid, name);
+    }
+
+    private void setQuery(MainActivity act, String q) throws Exception {
+        Field f = MainActivity.class.getDeclaredField("searchQuery");
+        f.setAccessible(true);
+        f.set(act, q);
+    }
+
+    private MainActivity newActivity() {
+        return Robolectric.buildActivity(MainActivity.class).create().start().get();
+    }
+
+    @Test
+    public void addFirstCard_showsInList() throws Exception {
+        MainActivity act = newActivity();
+        assertEquals(0, displayedCount(act));
+        save(act, "11223344", "A+1");
+        assertEquals("added A+1 is displayed", 1, displayedCount(act));
+    }
+
+    @Test
+    public void addPlainName_showsInList() throws Exception {
+        MainActivity act = newActivity();
+        save(act, "DEADBEEF", "plainname");
+        assertEquals(1, displayedCount(act));
+    }
+
+    @Test
+    public void addWhileFilterActive_autoClearsFilter() throws Exception {
+        MainActivity act = newActivity();
+        save(act, "11111111", "Home+Desk");
+        setQuery(act, "Home+");
+        Method rd = MainActivity.class.getDeclaredMethod("refreshDisplay");
+        rd.setAccessible(true);
+        rd.invoke(act);
+        assertEquals(1, displayedCount(act));
+        save(act, "22222222", "A+1");
+        assertEquals("hidden new card must force filter clear", 2, displayedCount(act));
+    }
+
+    @Test
+    public void duplicateUid_renamesExisting() throws Exception {
+        MainActivity act = newActivity();
+        save(act, "11223344", "first");
+        save(act, "11223344", "second");
+        assertEquals(1, displayedCount(act));
+    }
+
+    /**
+     * Drives the REAL save path: showAddTagDialog -> fill UID + name EditTexts -> click SAVE button.
+     * This is the path the user actually uses in the app.
+     */
+    @Test
+    public void saveViaAddDialogClick_showsInList() throws Exception {
+        MainActivity act = newActivity();
+
+        Method showAdd = MainActivity.class.getDeclaredMethod("showAddTagDialog");
+        showAdd.setAccessible(true);
+        showAdd.invoke(act);
+        // dialog window attaches asynchronously; let the main looper dispatch onShow
+        Shadows.shadowOf(android.os.Looper.getMainLooper()).idle();
+
+        AlertDialog dialog = (AlertDialog) ShadowDialog.getLatestDialog();
+        assertTrue("add dialog must be showing", dialog != null && dialog.isShowing());
+
+        EditText uidField = dialog.findViewById(R.id.edit_text_default_uid);
+        EditText nameField = dialog.findViewById(R.id.edit_text_default_uid_name);
+        uidField.setText("1122AABB");
+        nameField.setText("A+1");
+        Button save = dialog.getButton(DialogInterface.BUTTON_POSITIVE);
+        System.out.println("save button null? " + (save == null) + " dialog==addTag? ");
+        // is the dialog we grabbed actually the add dialog? check via ShadowDialog identity
+        Object latest = ShadowDialog.getLatestDialog();
+        System.out.println("latest dialog same as clicked? " + (latest == dialog));
+        try {
+            save.performClick();
+        } catch (Throwable t) {
+            System.out.println("PERFORMCLICK THREW: " + t);
+            t.printStackTrace(System.out);
+            throw t;
+        }
+        java.util.List<?> sl = (java.util.List<?>) getField(act, "displayList");
+        Object st = getField(act, "settings");
+        Object inner = st.getClass().getMethod("getList").invoke(st);
+        System.out.println("display=" + sl.size() + " settings-list=" + ((java.util.List<?>) inner).size());
+        for (org.robolectric.shadows.ShadowLog.LogItem item : org.robolectric.shadows.ShadowLog.getLogsForTag("SAVETEST")) {
+            System.out.println("LOG: " + item.msg);
+        }
+        assertEquals("SAVE click must add via real click listener", 1, displayedCount(act));
+    }
+
+    /** Real click path with no name typed -> auto-generated Tag name, still added. */
+    @Test
+    public void saveViaAddDialogEmptyName_showsInList() throws Exception {
+        MainActivity act = newActivity();
+
+        Method showAdd = MainActivity.class.getDeclaredMethod("showAddTagDialog");
+        showAdd.setAccessible(true);
+        showAdd.invoke(act);
+        // dialog window attaches asynchronously; let the main looper dispatch onShow
+        Shadows.shadowOf(android.os.Looper.getMainLooper()).idle();
+
+        AlertDialog dialog = (AlertDialog) ShadowDialog.getLatestDialog();
+        ((EditText) dialog.findViewById(R.id.edit_text_default_uid)).setText("CAFEBABE");
+        dialog.getButton(DialogInterface.BUTTON_POSITIVE).performClick();
+
+        assertEquals("empty name still adds (auto Tag name)", 1, displayedCount(act));
+    }
+
+    /** Real click path with INVALID uid -> must NOT add, error shown, dialog stays. */
+    @Test
+    public void saveViaAddDialogInvalidUid_doesNotAdd() throws Exception {
+        MainActivity act = newActivity();
+
+        Method showAdd = MainActivity.class.getDeclaredMethod("showAddTagDialog");
+        showAdd.setAccessible(true);
+        showAdd.invoke(act);
+        // dialog window attaches asynchronously; let the main looper dispatch onShow
+        Shadows.shadowOf(android.os.Looper.getMainLooper()).idle();
+
+        AlertDialog dialog = (AlertDialog) ShadowDialog.getLatestDialog();
+        ((EditText) dialog.findViewById(R.id.edit_text_default_uid)).setText("not-hex");
+        dialog.getButton(DialogInterface.BUTTON_POSITIVE).performClick();
+
+        assertEquals("invalid uid must not add", 0, displayedCount(act));
+        assertTrue("dialog must stay open on invalid uid", dialog.isShowing());
+    }
+
+    /** Invariant: no NFC hardware means the app must exit (setupNfc finish()).
+     *  Also the tripwire for smoke-APK patches leaking into master. */
+    @Test
+    public void withoutNfc_activityMustFinish() {
+        MainActivity act = Robolectric.buildActivity(MainActivity.class).create().start().resume().get();
+        assertTrue("no NFC must terminate the app", act.isFinishing());
+    }
+}

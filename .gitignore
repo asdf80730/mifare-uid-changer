@@ -14,3 +14,8 @@
 .cxx
 local.properties
 .idea
+
+# local smoke artifact and harness installs
+/emulator-smoke.apk
+/.agents/
+/skills-lock.json
