@@ -35,3 +35,13 @@ After any `git checkout --` restore or external edit, `read` the file before `ed
 Never pass `-i` to gradle to chase output — daemon logs bury it. Read the verdict from `app/build/test-results/testDebugUnitTest/*.xml`: failures under the `failure` node, `println` probes under `system-out`.
 
 To probe product code, drop a throwaway `Log.d("TAGX", "…")` there and dump it from a test with `ShadowLog.getLogsForTag("TAGX")` — proves which lines actually run, e.g. whether a dialog listener fired at all. Remove the probe before committing.
+
+## Real device without KVM
+The sandbox can run the API 34 x86_64 image under TCG (`sdkmanager "emulator"
+"system-images;android-34;default;x86_64"`, `avdmanager create avd -n muc34 …`,
+then `/root/android-sdk/emulator/emulator -avd muc34 -no-window -no-accel -gpu
+swiftshader_indirect`). Boot takes ~3-5 min; every uiautomator/adb call is 10x slower
+than normal, so dump→parse-coords→`input tap` one step at a time (sleep 20+ between
+steps). Robolectric passes while the real UI is broken — trust logcat + window dumps.
+Probe trick for invisible widgets: `adb logcat | grep AccessibilityNodeInfoDumper`
+shows zero-bounds nodes the dumpfile omits.
