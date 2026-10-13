@@ -30,9 +30,16 @@ public class MainActivitySmokeTest {
         return f.get(target);
     }
 
+    /** Truth source: the RecyclerView's own adapter, not the internal list field.
+     *  A list that exists but is not bound to the view displays nothing. */
     private int displayedCount(MainActivity act) throws Exception {
-        java.util.List<?> dl = (java.util.List<?>) getField(act, "displayList");
-        return dl.size();
+        androidx.recyclerview.widget.RecyclerView rv =
+                act.findViewById(R.id.rv_uid_list);
+        androidx.recyclerview.widget.RecyclerView.Adapter<?> a = rv.getAdapter();
+        if (a == null) {
+            throw new AssertionError("RecyclerView must have the adapter bound in onCreate");
+        }
+        return a.getItemCount();
     }
 
     private void save(MainActivity act, String uid, String name) throws Exception {
@@ -173,5 +180,24 @@ public class MainActivitySmokeTest {
     public void withoutNfc_activityMustFinish() {
         MainActivity act = Robolectric.buildActivity(MainActivity.class).create().start().resume().get();
         assertTrue("no NFC must terminate the app", act.isFinishing());
+    }
+
+    /** Fresh-install journey: welcome dialog -> OK -> FAB -> fill -> SAVE. Exactly the user's path. */
+    @Test
+    public void freshInstall_fabToSave_addsFirstCard() throws Exception {
+        MainActivity act = newActivity(); // settings==null -> onCreate shows welcome dialog
+        Shadows.shadowOf(android.os.Looper.getMainLooper()).idle();
+        AlertDialog welcome = (AlertDialog) ShadowDialog.getLatestDialog();
+        welcome.getButton(DialogInterface.BUTTON_POSITIVE).performClick();
+
+        act.findViewById(R.id.fab).performClick();
+        Shadows.shadowOf(android.os.Looper.getMainLooper()).idle();
+
+        AlertDialog add = (AlertDialog) ShadowDialog.getLatestDialog();
+        ((EditText) add.findViewById(R.id.edit_text_default_uid)).setText("1A2B3C4D");
+        ((android.widget.AutoCompleteTextView) add.findViewById(R.id.edit_text_default_uid_name)).setText("Home+Door");
+        add.getButton(DialogInterface.BUTTON_POSITIVE).performClick();
+
+        assertEquals("fresh install must accept first card", 1, displayedCount(act));
     }
 }
