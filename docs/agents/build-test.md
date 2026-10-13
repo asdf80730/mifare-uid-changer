@@ -18,6 +18,10 @@ ANDROID_HOME=/root/android-sdk sh ./gradlew testDebugUnitTest --no-daemon
 
 Suite `app/src/test/java/li/power/app/mifareuidchanger/MainActivitySmokeTest.java` runs the real `MainActivity`: launch, real dialog SAVE clicks, filtering, duplicate-UID rename. Run it green before touching UI or persistence code.
 
+The only automated check is the tracked hook `scripts/hooks/pre-commit`, wired via
+`git config core.hooksPath scripts/hooks`. A checkout without that config has no
+guardrail — run the config command before trusting any commit.
+
 Gotcha: `setOnShowListener` dialogs register their custom button listeners lazily. After showing one (e.g. `showAddTagDialog`), call `Shadows.shadowOf(Looper.getMainLooper()).idle();` before clicking — otherwise the click does nothing and the failure looks like a product bug.
 
 ## Emulator smoke APK

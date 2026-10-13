@@ -1,0 +1,11 @@
+#!/bin/sh
+# Local guardrail (this checkout only, not shipped). The unit suite is this repo's only
+# automated check; commits touching product code may not land red.
+if git diff --cached --name-only | grep -E '^app/src/(main|test)/' >/dev/null 2>&1; then
+    echo "pre-commit: app/src changed → running unit suite"
+    ANDROID_HOME=/root/android-sdk sh ./gradlew testDebugUnitTest --no-daemon -q || {
+        echo "pre-commit: tests FAILED — commit blocked" >&2
+        exit 1
+    }
+    echo "pre-commit: suite green"
+fi

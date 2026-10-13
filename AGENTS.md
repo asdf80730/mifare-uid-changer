@@ -16,4 +16,4 @@ Default five-role vocabulary: `needs-triage`, `needs-info`, `ready-for-agent`, `
 
 ### Domain docs
 
-Single-context layout: `GLOSSARY.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+Single-context layout: `GLOSSARY.md` at the repo root; write an ADR into `docs/adr/` the first time one is earned (none yet, so don't go looking). See `docs/agents/domain.md`.

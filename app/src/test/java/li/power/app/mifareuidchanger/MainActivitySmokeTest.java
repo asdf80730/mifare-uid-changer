@@ -105,7 +105,7 @@ public class MainActivitySmokeTest {
         Method showAdd = MainActivity.class.getDeclaredMethod("showAddTagDialog");
         showAdd.setAccessible(true);
         showAdd.invoke(act);
-        // dialog window attaches asynchronously; let the main looper dispatch onShow
+        // dialog window attaches asynchronously; let the main looper dispatch onShow 
         Shadows.shadowOf(android.os.Looper.getMainLooper()).idle();
 
         AlertDialog dialog = (AlertDialog) ShadowDialog.getLatestDialog();
