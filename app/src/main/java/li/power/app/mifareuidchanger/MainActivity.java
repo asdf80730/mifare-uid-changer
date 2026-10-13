@@ -85,6 +85,8 @@ public class MainActivity extends AppCompatActivity {
     private ArrayList<UidItem> displayList = new ArrayList<>();
     private String searchQuery = "";
 
+    private UidItem editTarget;
+
     boolean pendingBackup = false;
     boolean pendingRestore = false;
     String backupDestination = "";
@@ -208,6 +210,13 @@ public class MainActivity extends AppCompatActivity {
 
         alertDialogBuilder.setNegativeButton("NO", (dialog, which) -> dialog.dismiss());
 
+        alertDialogBuilder.setNeutralButton("EDIT", (dialog, which) -> {
+            dialog.dismiss();
+            editTarget = item;
+            showAddTagDialog();
+            editTarget = null;
+        });
+
         AlertDialog alertDialog = alertDialogBuilder.create();
         alertDialog.show();
     }
@@ -284,6 +293,11 @@ public class MainActivity extends AppCompatActivity {
 
         if (scannedUid != null && !scannedUid.equals("")) {
             uidEditText.setText(scannedUid);
+        }
+
+        if (editTarget != null) {
+            uidEditText.setText(editTarget.getId());
+            uidNameEditText.setText(editTarget.getName());
         }
 
         alertDialogBuilder.setPositiveButton("SAVE", null);
