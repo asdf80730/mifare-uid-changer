@@ -18,6 +18,8 @@ import org.robolectric.shadows.ShadowDialog;
 import org.robolectric.Shadows;
 
 import java.lang.reflect.Field;
+
+    import li.power.app.mifareuidchanger.model.UidItem;
 import java.lang.reflect.Method;
 
 @RunWith(RobolectricTestRunner.class)
@@ -192,12 +194,86 @@ public class MainActivitySmokeTest {
 
         act.findViewById(R.id.fab).performClick();
         Shadows.shadowOf(android.os.Looper.getMainLooper()).idle();
-
         AlertDialog add = (AlertDialog) ShadowDialog.getLatestDialog();
         ((EditText) add.findViewById(R.id.edit_text_default_uid)).setText("1A2B3C4D");
         ((android.widget.AutoCompleteTextView) add.findViewById(R.id.edit_text_default_uid_name)).setText("Home+Door");
         add.getButton(DialogInterface.BUTTON_POSITIVE).performClick();
 
         assertEquals("fresh install must accept first card", 1, displayedCount(act));
+    }
+
+
+
+    /** Long-press dialog must offer EDIT (neutral slot) alongside YES/NO delete. */
+    @Test
+    public void longPress_offersEditOption() throws Exception {
+        MainActivity act = newActivity();
+        save(act, "11223344", "Keep");
+        Object st = getField(act, "settings");
+        java.util.List<?> items = (java.util.List<?>) st.getClass().getMethod("getList").invoke(st);
+        Method del = MainActivity.class.getDeclaredMethod("showDeleteTagUidDialog",
+                Class.forName("li.power.app.mifareuidchanger.model.UidItem"), int.class);
+        del.setAccessible(true);
+        del.invoke(act, items.get(0), 0);
+        Shadows.shadowOf(android.os.Looper.getMainLooper()).idle();
+        AlertDialog dialog = (AlertDialog) ShadowDialog.getLatestDialog();
+        assertEquals("long-press must offer EDIT", "EDIT",
+                dialog.getButton(DialogInterface.BUTTON_NEUTRAL).getText().toString());
+    }
+
+    /** Edit with SAME uid: upsert renames in place, no duplicate card. */
+    @Test
+    public void editSameUid_renamesInPlace() throws Exception {
+        MainActivity act = newActivity();
+        save(act, "11223344", "Old");
+        Object st = getField(act, "settings");
+        java.util.List<?> items = (java.util.List<?>) st.getClass().getMethod("getList").invoke(st);
+        Object item = items.get(0);
+        Field et = MainActivity.class.getDeclaredField("editTarget");
+        et.setAccessible(true);
+        et.set(act, item);
+        Method show = MainActivity.class.getDeclaredMethod("showAddTagDialog");
+        show.setAccessible(true);
+        show.invoke(act);
+        et.set(act, null); // same one-shot token semantics as the EDIT button path
+        Shadows.shadowOf(android.os.Looper.getMainLooper()).idle();
+
+        AlertDialog dialog = (AlertDialog) ShadowDialog.getLatestDialog();
+        EditText uidField = dialog.findViewById(R.id.edit_text_default_uid);
+        EditText nameField = dialog.findViewById(R.id.edit_text_default_uid_name);
+        assertEquals("edit dialog prefills uid", "11223344", uidField.getText().toString());
+        assertEquals("edit dialog prefills name", "Old", nameField.getText().toString());
+        nameField.setText("Renamed");
+        dialog.getButton(DialogInterface.BUTTON_POSITIVE).performClick();
+
+        assertEquals("same-uid edit must not duplicate", 1, displayedCount(act));
+        assertEquals("renamed in place", "Renamed",
+                ((UidItem) items.get(0)).getName());
+    }
+
+    /** Edit with CHANGED uid: acts as copy — new card appears, original untouched. */
+    @Test
+    public void editNewUid_duplicatesKeepingOriginal() throws Exception {
+        MainActivity act = newActivity();
+        save(act, "11223344", "Origin");
+        Object st = getField(act, "settings");
+        java.util.List<?> items = (java.util.List<?>) st.getClass().getMethod("getList").invoke(st);
+        Object item = items.get(0);
+        Field et = MainActivity.class.getDeclaredField("editTarget");
+        et.setAccessible(true);
+        et.set(act, item);
+        Method show = MainActivity.class.getDeclaredMethod("showAddTagDialog");
+        show.setAccessible(true);
+        show.invoke(act);
+        et.set(act, null);
+        Shadows.shadowOf(android.os.Looper.getMainLooper()).idle();
+
+        AlertDialog dialog = (AlertDialog) ShadowDialog.getLatestDialog();
+        ((EditText) dialog.findViewById(R.id.edit_text_default_uid)).setText("DEADBEEF");
+        dialog.getButton(DialogInterface.BUTTON_POSITIVE).performClick();
+
+        assertEquals("uid-changed edit must create a second card", 2, displayedCount(act));
+        assertEquals("original card untouched", "11223344",
+                ((UidItem) items.get(0)).getId());
     }
 }

@@ -23,3 +23,10 @@ _Avoid_: Card (in scan contexts)
 **Category**:
 A logical grouping of UID Items expressed in the name via a `+` delimiter (`Home+Front Door`). Sorting and filtering group items by that prefix; names without `+` belong to no category. The delimiter is deliberately rare so casual names never create categories. Not a stored field.
 _Avoid_: Label, Group, Tag
+
+**Save**:
+The commit rule for the UID Item list, keyed by UID: an already-saved UID is renamed in place, an unseen UID joins as a new item.
+_Avoid_: Update, Upsert (in user-facing text)
+
+**Edit**:
+Modifying a UID Item's name or UID from the long-press menu. A name-only edit renames the item in place; a UID change saves as a new item with the original kept — from the user's view it doubles as copy.
