@@ -36,12 +36,18 @@ Never pass `-i` to gradle to chase output — daemon logs bury it. Read the verd
 
 To probe product code, drop a throwaway `Log.d("TAGX", "…")` there and dump it from a test with `ShadowLog.getLogsForTag("TAGX")` — proves which lines actually run, e.g. whether a dialog listener fired at all. Remove the probe before committing.
 
+For the instrumented build on a real device: keep the `Log.d` lines, run the
+`smoke-apk.sh` NFC-patch sed (`s|^            finish();$|            /* smoke */;|`),
+then `ANDROID_HOME=/root/android-sdk sh ./gradlew assembleDebug --no-daemon`
+(output `app/build/outputs/apk/debug/app-debug.apk`), then `git checkout --` the file.
+`smoke-apk.sh` refuses to run on a dirty tree, so patch builds always go this way.
+
 ## Real device without KVM
-The sandbox can run the API 34 x86_64 image under TCG (`sdkmanager "emulator"
-"system-images;android-34;default;x86_64"`, `avdmanager create avd -n muc34 …`,
-then `/root/android-sdk/emulator/emulator -avd muc34 -no-window -no-accel -gpu
-swiftshader_indirect`). Boot takes ~3-5 min; every uiautomator/adb call is 10x slower
-than normal, so dump→parse-coords→`input tap` one step at a time (sleep 20+ between
-steps). Robolectric passes while the real UI is broken — trust logcat + window dumps.
-Probe trick for invisible widgets: `adb logcat | grep AccessibilityNodeInfoDumper`
-shows zero-bounds nodes the dumpfile omits.
+Run `scripts/emulator-up.sh` — idempotent (installs the image, creates the AVD, boots
+under TCG in software, waits for `boot_completed`, hides error dialogs). Boot ~4 min;
+uiautomator/adb calls run 10x slower than normal, so sleep 20+ between steps.
+
+Robolectric passes while the real UI is broken — trust logcat + window dumps. One tap
+per dump, re-dump after each tap (an ANR dialog carries `Wait` and `Close app` in the
+same tree; grabbing both kills the app). `adb logcat | grep AccessibilityNodeInfoDumper`
+surfaces zero-bounds widgets the dumpfile omits.
