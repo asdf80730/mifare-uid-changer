@@ -88,17 +88,38 @@ public class MainActivitySmokeTest {
         assertEquals(1, displayedCount(act));
     }
 
+    /** Category filter is prefix-anchored: the "Home+" token selects items whose
+     *  CATEGORY is Home, never items that merely contain "Home+" in the name. */
     @Test
-    public void addWhileFilterActive_autoClearsFilter() throws Exception {
+    public void categoryFilter_isPrefixAnchored() throws Exception {
+        MainActivity act = newActivity();
+        save(act, "11111111", "Home+Desk");
+        save(act, "22222222", "Old+Home+X");
+        Method rd = MainActivity.class.getDeclaredMethod("refreshDisplay");
+        rd.setAccessible(true);
+        setQuery(act, "Home+");
+        rd.invoke(act);
+        assertEquals("only Home+ category shown", 1, displayedCount(act));
+        setQuery(act, "Old+");
+        rd.invoke(act);
+        assertEquals("Old+ category is the cross-named item's category", 1, displayedCount(act));
+    }
+
+    /** Filter is device-local user state: saving while filtered does not silently
+     *  clear it. The item must persist to settings regardless of visibility. */
+    @Test
+    public void saveWhileFilterActive_keepsFilterAndPersistsItem() throws Exception {
         MainActivity act = newActivity();
         save(act, "11111111", "Home+Desk");
         setQuery(act, "Home+");
         Method rd = MainActivity.class.getDeclaredMethod("refreshDisplay");
         rd.setAccessible(true);
         rd.invoke(act);
-        assertEquals(1, displayedCount(act));
         save(act, "22222222", "A+1");
-        assertEquals("hidden new card must force filter clear", 2, displayedCount(act));
+        assertEquals("filter survives a save", 1, displayedCount(act));
+        Object st = getField(act, "settings");
+        java.util.List<?> items = (java.util.List<?>) st.getClass().getMethod("getList").invoke(st);
+        assertEquals("hidden item is still saved", 2, items.size());
     }
 
     @Test
@@ -209,7 +230,7 @@ public class MainActivitySmokeTest {
         Shadows.shadowOf(android.os.Looper.getMainLooper()).idle();
         AlertDialog add = (AlertDialog) ShadowDialog.getLatestDialog();
         ((EditText) add.findViewById(R.id.edit_text_default_uid)).setText("1A2B3C4D");
-        ((android.widget.AutoCompleteTextView) add.findViewById(R.id.edit_text_default_uid_name)).setText("Home+Door");
+        ((EditText) add.findViewById(R.id.edit_text_default_uid_name)).setText("Home+Door");
         add.getButton(DialogInterface.BUTTON_POSITIVE).performClick();
 
         assertEquals("fresh install must accept first card", 1, displayedCount(act));
