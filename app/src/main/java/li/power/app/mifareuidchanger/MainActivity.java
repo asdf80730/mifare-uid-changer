@@ -82,6 +82,9 @@ public class MainActivity extends AppCompatActivity {
 
     private Settings settings;
 
+    private ArrayList<UidItem> displayList = new ArrayList<>();
+    private String searchQuery = "";
+
     boolean pendingBackup = false;
     boolean pendingRestore = false;
     String backupDestination = "";
@@ -116,7 +119,8 @@ public class MainActivity extends AppCompatActivity {
             saveSettings("FFFFFFFFFFFF", "FFFFFFFFFFFF");
         }
 
-        uidAdapter = new UidAdapter(settings.getList());
+        displayList.addAll(settings.getList());
+        uidAdapter = new UidAdapter(displayList);
         recyclerView.setAdapter(uidAdapter);
 
         uidAdapter.setOnLongClickListener((position, item) -> {
@@ -196,9 +200,9 @@ public class MainActivity extends AppCompatActivity {
         layout.addView(tvMsg);
         alertDialogBuilder.setView(layout);
         alertDialogBuilder.setPositiveButton("YES", (dialog, which) -> {
-            settings.getList().remove(position);
+            settings.getList().remove(item);
             saveList();
-            uidAdapter.notifyItemRemoved(position);
+            refreshDisplay();
 
         });
 
@@ -362,8 +366,8 @@ public class MainActivity extends AppCompatActivity {
             settings.getList().add(new UidItem(uid, name));
         }
 
-        uidAdapter.notifyDataSetChanged();
         saveList();
+        refreshDisplay();
     }
 
     private void sortUidList(boolean byName) {
@@ -372,7 +376,46 @@ public class MainActivity extends AppCompatActivity {
                 String.CASE_INSENSITIVE_ORDER);
         settings.getList().sort(comparator);
         saveList();
+        refreshDisplay();
+    }
+
+    private void refreshDisplay() {
+        displayList.clear();
+        String query = searchQuery.toLowerCase(Locale.ROOT);
+        for (UidItem item : settings.getList()) {
+            if (query.isEmpty() || item.getName().toLowerCase(Locale.ROOT).startsWith(query)) {
+                displayList.add(item);
+            }
+        }
         uidAdapter.notifyDataSetChanged();
+    }
+
+    private ArrayList<String> getCategories() {
+        ArrayList<String> categories = new ArrayList<>();
+        for (UidItem item : settings.getList()) {
+            int sep = item.getName().indexOf('+');
+            if (sep > 0) {
+                String category = item.getName().substring(0, sep) + "+";
+                if (!categories.contains(category)) {
+                    categories.add(category);
+                }
+            }
+        }
+        Collections.sort(categories);
+        return categories;
+    }
+
+    private void showCategoryFilterDialog() {
+        ArrayList<String> options = getCategories();
+        options.add("All");
+        AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(this);
+        alertDialogBuilder.setTitle("Filter by category");
+        alertDialogBuilder.setItems(options.toArray(new String[0]), (dialog, which) -> {
+            searchQuery = options.get(which).equals("All") ? "" : options.get(which);
+            refreshDisplay();
+            showToast(options.get(which).equals("All") ? "Showing all categories" : options.get(which));
+        });
+        alertDialogBuilder.show();
     }
 
     @Override
@@ -401,6 +444,8 @@ public class MainActivity extends AppCompatActivity {
             sortUidList(true);
         } else if (id == R.id.action_sort_uid) {
             sortUidList(false);
+        } else if (id == R.id.action_filter_category) {
+            showCategoryFilterDialog();
         }
         return super.onOptionsItemSelected(item);
     }
@@ -474,7 +519,7 @@ public class MainActivity extends AppCompatActivity {
                 updateSettings(newSettings);
                 runOnUiThread(() -> {
                     saveList();
-                    uidAdapter.notifyDataSetChanged();
+                    refreshDisplay();
                 });
 
                 showToast("Settings restored");
@@ -699,7 +744,7 @@ public class MainActivity extends AppCompatActivity {
                 in.close();
                 updateSettings(newSettings);
                 saveList();
-                uidAdapter.notifyDataSetChanged();
+                refreshDisplay();
                 showToast("Backup restored");
             } catch (Exception e) {
                 showToast("Failed to read backup or the backup file is not valid");

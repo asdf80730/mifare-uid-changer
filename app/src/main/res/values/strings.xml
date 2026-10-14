@@ -7,4 +7,5 @@
     <string name="action_restore_local">Restore from local storage</string>
     <string name="action_sort_name">Sort by name</string>
     <string name="action_sort_uid">Sort by UID</string>
+    <string name="action_filter_category">Filter by category</string>
 </resources>
