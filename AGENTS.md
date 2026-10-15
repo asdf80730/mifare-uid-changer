@@ -10,6 +10,10 @@ Issues live as local markdown files under `.scratch/<feature-slug>/`. See `docs/
 
 Building, testing, or shipping an APK here: read `docs/agents/build-test.md` first.
 
+### Session state
+
+PR follow-ups and parked backlog: `docs/handoff/upstream-pr3.md`.
+
 ### Triage labels
 
 Default five-role vocabulary: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
