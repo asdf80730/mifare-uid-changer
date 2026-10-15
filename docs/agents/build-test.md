@@ -1,6 +1,6 @@
 # Build & Test
 
-All commands run from the repo root. `gradlew` ships without the exec bit — invoke it as `sh ./gradlew …`, with `ANDROID_HOME=/root/android-sdk` (JDK 17 from apt; SDK platform/build-tools 34 preinstalled there).
+All commands run from the repo root. `gradlew` ships without the exec bit — invoke it as `sh ./gradlew …`, with `ANDROID_HOME=/root/android-sdk` (JDK 17 from apt; SDK platform/build-tools 34 preinstalled there). `scripts/*.sh` are bash — run `bash scripts/...`; the `sh` prefix is for gradlew only.
 
 ## Build
 
@@ -33,6 +33,10 @@ The app self-closes without NFC (`setupNfc` calls `finish()`); emulators have no
 Let plumbing command stderr through (`git stash pop`, checkout, reset); a silenced failure becomes a ghost hunt. `safe.directory` for `/work` is configured globally — no per-command flag.
 
 After any `git checkout --` restore or external edit, `read` the file before `edit`; tags captured before the restore are stale and anchored edits land on the wrong lines.
+
+History surgery: stage edits before `git commit --amend`; to clear a conflicted pick, stage the resolution and run `git rebase --continue` — git creates the commit, amend is the wrong tool there. After surgery, `git diff <orig-tip> HEAD -- app/` must be empty (or show only the intended changes); `orig-tip` lives in `.git/rebase-merge/orig-head`.
+
+Ship to GitHub: run `gh auth setup-git` once, after that https pushes to your fork work. Fine-grained PATs push own repos only — fork APIs and PRs against other owners' repos need a classic token or a human click.
 
 ## Reading results
 
